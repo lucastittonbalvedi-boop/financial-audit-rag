@@ -25,3 +25,6 @@ data/chroma_db/
 .idea/
 .DS_Store
 Thumbs.db
+
+*.egg-info/
+src/*.egg-info/
