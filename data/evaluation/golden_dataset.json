@@ -1,0 +1,30 @@
+[
+  {
+    "id": "eval_01",
+    "query": "Qual foi a receita líquida de vendas e o lucro líquido reportado em 2023 comparado a 2022?",
+    "expected_section": "Demonstração do Resultado do Exercício",
+    "expected_keywords": ["511.994", "641.256", "124.606", "188.478", "Receita Líquida"],
+    "ground_truth_answer": "Em 2023, a Receita Líquida de Vendas atingiu R$ 511.994 milhões (queda de 20,2% frente a R$ 641.256 milhões em 2022). O Lucro Líquido totalizou R$ 124.606 milhões em 2023 contra R$ 188.478 milhões em 2022."
+  },
+  {
+    "id": "eval_02",
+    "query": "Qual o saldo total provisionado para litígios na Nota Explicativa 14 e quanto corresponde a litígios tributários?",
+    "expected_section": "Nota Explicativa 14",
+    "expected_keywords": ["63.140", "34.820", "tributários", "ICMS/PIS/COFINS"],
+    "ground_truth_answer": "O total das provisões para litígios reconhecidas em 31/12/2023 foi de R$ 63.140 milhões, sendo R$ 34.820 milhões referentes a litígios fiscais e tributários."
+  },
+  {
+    "id": "eval_03",
+    "query": "Qual o montante total da dívida consolidada e qual parcela vence no curto prazo em 2024?",
+    "expected_section": "Nota Explicativa 18",
+    "expected_keywords": ["298.600", "28.950", "2024", "Curto Prazo"],
+    "ground_truth_answer": "O total geral da dívida consolidada encerrou o ano em R$ 298.600 milhões, sendo R$ 28.950 milhões com vencimento em 2024 (curto prazo)."
+  },
+  {
+    "id": "eval_04",
+    "query": "Qual foi a margem EBITDA ajustada e a dívida líquida consolidada em 2023?",
+    "expected_section": "Relatório da Administração",
+    "expected_keywords": ["51,2%", "262.238", "220.150", "Dívida Líquida"],
+    "ground_truth_answer": "O EBITDA Ajustado atingiu R$ 262.238 milhões com margem EBITDA de 51,2%. A Dívida Líquida consolidada encerrou 2023 em R$ 220.150 milhões."
+  }
+]
