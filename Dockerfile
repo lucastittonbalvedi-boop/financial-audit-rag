@@ -1,0 +1,25 @@
+# Build and run container for Financial Audit Hybrid RAG
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies for PDF parsing
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install python dependencies
+COPY requirements.txt pyproject.toml ./
+RUN pip install --no-cache-dir -r requirements.txt reportlab
+
+# Copy application source
+COPY . .
+
+# Generate sample PDF reports for instant demo
+RUN python data/sample_reports/generate_sample_pdf.py
+
+EXPOSE 8000 8501
+
+# Default command launches FastAPI backend
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
