@@ -11,49 +11,41 @@
 
 ---
 
-## 🎯 Formulação do Problema: Limitações Teóricas do "Naive RAG" em Finanças
+## 🎯 O Problema Real: Por que o RAG Tradicional Falha em Finanças?
 
-Em tarefas de Processamento de Linguagem Natural (PLN) aplicadas a demonstrações contábeis e relatórios de auditoria corporativa (DFP, ITR, Form 10-K), o paradigma convencional de *Retrieval-Augmented Generation* (Naive RAG) apresenta falhas estruturais decorrentes de premissas inadequadas sobre a topologia e a semântica dos dados:
+A maioria dos projetos de RAG divide documentos usando contagem fixa de caracteres ou quebras cegas de parágrafo. Em relatórios financeiros e de auditoria (como DFPs da B3, ITRs ou 10-Ks), essa abordagem falha por três motivos práticos:
 
-1. **Ruptura de Invariantes Estruturais e Dependências Bi-dimensionais (Tabular Topology Breakdown)**:
-   - Divisões lineares baseadas em janelas deslizantes de caracteres ou tokens ($k$-token sliding window) tratam o documento como uma sequência unidimensional homogênea.
-   - Demonstrações contábeis (Balanço Patrimonial, DRE, DFC) constituem matrizes bi-dimensionais em que a semântica de uma célula $(i, j)$ depende estritamente do cabeçalho da linha (conta contábil), do cabeçalho da coluna (exercício social/período) e da unidade de escala monetária. A segmentação ingênua fragmenta essa matriz, desassociando valores escalares de suas âncoras conceituais e induzindo o modelo de linguagem a alucinações aritméticas e interpretações espúrias.
+1. **Quebra de Tabelas e Perda de Contexto Numérico**:
+   Balanços e DREs são matrizes bidimensionais. Ao dividir o texto por blocos arbitrários de caracteres, cabeçalhos e valores se separam (ex: a conta contábil perde a linha correspondente ao ano de 2023). Sem esse vínculo, o LLM passa a alucinar somas, percentuais e comparações entre períodos.
 
-2. **Divergência de Espaço Latente e Inadequação Semântica Pura (Out-of-Vocabulary & Lexical Mismatch)**:
-   - Modelos de embedding denso projetam representações em um espaço vetorial contínuo $\mathbb{R}^d$ treinado para otimizar similaridade semântica em linguagem natural genérica.
-   - O domínio contábil-regulatório é governado por taxonomias rígidas (CPC/NBC, IFRS, US-GAAP) e entidades discretas de alta especificidade (ex.: *"CPC 25"*, *"Nota Explicativa 14"*, *"IFRS 16"*, valores nominais exatos). Nesses cenários, a busca vetorial puramente semântica sofre de *semantic drift*: trechos conceituais genéricos de governança recebem proximidade angular similar ou superior à nota explicativa específica que consolida a fundamentação quantitativa da consulta.
+2. **Busca Vetorial Pura Ignora Termos Contábeis Exatos**:
+   Modelos de embeddings densos são excelentes para capturar ideias gerais, mas costumam falhar com siglas e códigos contábeis específicos (como *"CPC 25"*, *"Nota 14"*, *"IFRS 16"* ou um valor monetário exato). Em vez de trazer a nota técnica correta, a busca semântica tradicional muitas vezes retorna parágrafos vagos sobre "riscos de mercado".
 
-3. **Requisito Epistêmico de Rastreabilidade e Não-Estocasticidade em Auditoria**:
-   - Em auditoria independente e conformidade regulatória, a validade de uma asserção não pode decorrer da memória paramétrica estocástica de um LLM. Cada inferência analítica exige proveniência documental formal (rastreabilidade de página, nota explicativa e transcrição literal *verbatim*), sob pena de infração a padrões normativos de auditoria contábil.
+3. **Falta de Rastreabilidade e Auditoria**:
+   Em um ambiente de compliance e controladoria, uma resposta em texto livre sem evidências não tem valor prático. Cada afirmação precisa apontar **documento, número da página e a citação literal exata** para que um auditor possa validar o dado em segundos.
 
 ---
 
-## 🏛️ Fundamentação Teórica da Arquitetura Adotada
+## 🏛️ A Solução Proposta: Arquitetura Híbrida e Citações Confiáveis
 
-Para mitigar formalmente esses desafios, a solução implementa uma arquitetura em múltiplos estágios fundamentada em teoria de recuperação de informação e restrições estruturais de dados:
+Para resolver esses desafios com robustez e previsibilidade, o projeto adota uma arquitetura em camadas focada em confiabilidade:
 
-1. **Preservação Isomórfica de Topologia Tabular**:
-   - Emprego de análise determinística de layout vetorial via `pdfplumber` e conversão para representações relacionais estruturadas (Markdown Tables), assegurando que o relacionamento bidimensional $\{(r_i, c_j, v_{ij})\}$ permaneça contíguo e atômico em um único nó de contexto textual.
+1. **Extração Inteligente de Tabelas (`pdfplumber`)**:
+   As tabelas financeiras são extraídas diretamente do layout do PDF e convertidas em tabelas Markdown estruturadas. Isso garante que contas, colunas de anos fiscais e valores permaneçam agrupados de forma atômica no mesmo trecho.
 
-2. **Espaço Dual de Recuperação via Reciprocal Rank Fusion (RRF)**:
-   - A recuperação atua sobre um espaço dual que combina:
-     - **Espaço Léxico Esparso $\mathbb{R}^{|V|}$ (BM25 Okapi)**: Otimizado para ponderação de frequência inversa de termos e captura de entidades contábeis discretas de baixa entropia (siglas normativas, números de notas, anos fiscais).
-     - **Espaço Vetorial Denso $\mathbb{R}^d$ (ChromaDB / Embeddings)**: Otimizado para relações semânticas complexas, discussões da administração e análise qualitativa de riscos de crédito e de mercado.
-   - A consolidação dos rankings de recuperação é parametrizada pelo algoritmo **Reciprocal Rank Fusion (RRF)**:
-     $$RRF(d \in D) = \sum_{m \in M} \frac{1}{k + r_m(d)}$$
-     onde $M = \{\text{BM25}, \text{Dense}\}$, $r_m(d)$ é a posição ordinal do documento $d$ no método $m$, e $k = 60$ é o fator de regularização para amortecimento de dominância de outliers.
+2. **Busca Híbrida (BM25 + Vetores com Fusão RRF)**:
+   - **BM25 (Léxico)**: Localiza com precisão termos exatos, números de notas explicativas e siglas regulatórias.
+   - **ChromaDB (Vetorial)**: Encontra trechos conceituais, análises estratégicas e fatores qualitativos de risco.
+   - **Reciprocal Rank Fusion (RRF)**: Algoritmo que une os dois rankings de forma equilibrada, selecionando os trechos com maior consistência global.
 
-3. **Re-ranking Heurístico com Ponderação Temporal e Entitária**:
-   - Estágio de re-classificação que avalia os candidatos $d \in \text{Top-K}_{RRF}$, aplicando penalidades ou bonificações com base na correspondência temporal de exercícios sociais (ex.: 2023 vs. 2022) e densidade de valores quantitativos requisitados.
+3. **Re-ranker Focado em Exercícios e Métricas**:
+   Um segundo filtro reavalia os trechos recuperados, priorizando tabelas e trechos que contenham os exercícios sociais (ex.: 2023 vs. 2022) solicitados na pergunta.
 
-4. **Contratos Tipados de Síntese e Citação Conforme (Pydantic AST)**:
-   - A saída gerada é condicionada por um metamodelo de dados com tipos estáticos (Pydantic), forçando o desacoplamento entre a síntese interpretativa e o grafo de evidências documentais citadas (página, documento e trecho literal).
+4. **Contrato Rigoroso de Citação com Pydantic**:
+   A saída do modelo é validada por schemas tipados que exigem documento, página, seção e citação literal. Se o dado não existir no relatório, o modelo declara explicitamente a ausência em vez de inventar um número.
 
-5. **Avaliação Quantitativa de MLOps (Framework RAGAS)**:
-   - Monitoramento empírico da acurácia do pipeline via métricas formais:
-     - **Faithfulness (Fidelidade)**: Percentual de proposições da resposta analítica dedutíveis estritamente do contexto recuperado (mitigação matemática de alucinação).
-     - **Answer Relevance**: Divergência e relevância da resposta em relação ao escopo da consulta.
-     - **Context Precision**: Medida do inverso da posição dos trechos verdadeiramente pertinentes no ranking de recuperação.
+5. **Avaliação Contínua com Framework RAGAS**:
+   Pipeline de MLOps automatizado que afere *Faithfulness* (mitigação real de alucinações), *Answer Relevance* e *Context Precision* sobre um dataset de testes com dados reais.
 
 ## 🏛️ Arquitetura do Sistema
 

@@ -300,31 +300,21 @@ with tab_mlops:
                 st.warning("Arquivo golden_dataset.json não encontrado.")
 
 with tab_architecture:
-    st.subheader("Formulação Teórica: Limitações do 'Naive RAG' e Arquitetura Dual")
+    st.subheader("O Problema Real: Por que o RAG Tradicional Falha em Finanças?")
     st.markdown("""
-    ### 1. Ruptura de Invariantes Tabulares & Semântica Relacional
-    Em demonstrações contábeis e relatórios regulatórios (DFP, ITR, 10-K), o particionamento convencional de documentos 
-    por janelas unidimensionais de caracteres (`RecursiveCharacterTextSplitter`) destrói a topologia bidimensional das tabelas 
-    (Balanço Patrimonial, DRE). Uma célula contábil $(i, j)$ depende simultaneamente do rótulo da linha (conta contábil), 
-    da coluna (exercício social) e da ordem de grandeza. A segmentação ingênua fragmenta essa matriz contábil, 
-    provocando alucinações aritméticas severas em modelos de linguagem geradores.
+    A maioria das soluções convencionais de RAG divide documentos usando contagem fixa de caracteres ou quebras de parágrafo.
+    Em relatórios de auditoria e demonstrações contábeis (DFP, ITR, 10-K), isso costuma gerar falhas graves:
 
-    ### 2. Divergência de Espaço Latente (Semantic Drift em Entidades Contábeis)
-    Modelos densos de embedding mapeiam textos em um espaço vetorial contínuo $\mathbb{R}^d$ otimizado para similaridade 
-    semântica geral. No domínio contábil-regulatório, governado por normas rígidas (CPC/NBC, IFRS, US-GAAP), 
-    entidades de alta especificidade (ex: *"CPC 25"*, *"Nota Explicativa 14"*, valores nominais) sofrem de *semantic drift*: 
-    trechos conceituais genéricos recebem escores angulares similares ou superiores à nota técnica que contém o embasamento quantitativo.
+    1. **Quebra de Tabelas**: Divisões cegas separam linhas de DRE e Balanço dos respectivos anos (2023 vs. 2022), levando a IA a alucinar somas e variações percentuais.
+    2. **Busca Vetorial Pura Ignora Termos Exatos**: Embeddings densos frequentemente ignoram siglas cruciais (*"CPC 25"*, *"Nota 14"*, *"IFRS 16"*) e trazem parágrafos conceituais vagos.
+    3. **Ausência de Citações para Auditoria**: Sem indicar o documento, a página exata e o trecho literal, nenhuma equipe de controladoria pode confiar na resposta.
 
     ---
 
-    ### 3. Fundamentação da Arquitetura Adotada neste Projeto:
-    1. **Preservação Isomórfica de Tabelas (`pdfplumber`)**: Mapeamento determinístico de layout para Markdown Tables, mantendo a integridade relacional $\{(r_i, c_j, v_{ij})\}$.
-    2. **Espaço Dual de Recuperação via Reciprocal Rank Fusion (RRF)**:
-       - **Espaço Léxico Esparso $\mathbb{R}^{|V|}$ (BM25 Okapi)**: Otimizado para entidades de baixa entropia informacional (siglas, números de notas, anos fiscais).
-       - **Espaço Vetorial Denso $\mathbb{R}^d$ (ChromaDB / Embeddings)**: Otimizado para discussões conceituais e fatores qualitativos de risco.
-       - Fusão harmônica de rankings:
-         $$RRF(d) = \\sum_{m \\in M} \\frac{1}{k + r_m(d)}, \\quad k=60$$
-    3. **Re-ranker Heurístico Ponderado**: Ponderação de entidades numéricas, anos fiscais e priorização estruturada de tabelas.
-    4. **Contratos Tipados de Síntese (Pydantic AST)**: Citações auditáveis obrigatórias (documento, página, seção e trecho *verbatim*).
-    5. **Avaliação Quantitativa MLOps com RAGAS**: Medição formal de *Faithfulness* (mitigação matemática de alucinação), *Answer Relevance* e *Context Precision*.
+    ### A Solução Adotada neste Projeto:
+    * **Tabelas Preservadas (`pdfplumber`)**: Extração direta do layout do PDF em tabelas Markdown com colunas e linhas alinhadas.
+    * **Busca Híbrida (BM25 + Vetores)**: O **BM25** garante a precisão de termos e notas específicas, enquanto o **ChromaDB** capta a semântica contextual. O algoritmo **RRF** unifica os rankings.
+    * **Re-ranker Contábil**: Pondera a densidade de anos fiscais e entidades numéricas na consulta.
+    * **Citações Obrigatórias com Pydantic**: Respostas estruturadas com página e trecho *verbatim*.
+    * **Avaliação MLOps com RAGAS**: Medição contínua de fidelidade (*Faithfulness*), pertinência e precisão do ranking.
     """)
