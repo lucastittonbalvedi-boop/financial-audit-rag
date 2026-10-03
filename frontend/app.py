@@ -300,17 +300,31 @@ with tab_mlops:
                 st.warning("Arquivo golden_dataset.json não encontrado.")
 
 with tab_architecture:
-    st.subheader("Por que o Naive RAG falha em Finanças?")
+    st.subheader("Formulação Teórica: Limitações do 'Naive RAG' e Arquitetura Dual")
     st.markdown("""
-    A maioria dos projetos amadores de RAG divide documentos cegamente por contagem de caracteres (`RecursiveCharacterTextSplitter`).
-    Em balanços contábeis, isso divide linhas de tabelas ao meio, separando cabeçalhos de valores numéricos e provocando alucinações severas.
-    
-    ### Diferenciais deste Projeto:
-    1. **Parsing Tabular com `pdfplumber`**: Converte tabelas contábeis para Markdown Tables alinhadas, preservando a semântica relacional de linhas e colunas.
-    2. **Busca Híbrida (Lexical BM25 + Dense ChromaDB)**:
-       - O BM25 captura termos exatos como *"Nota Explicativa 14"* e *"CPC 06"*.
-       - Embeddings capturam conceitos como *"risco de solvência"* e *"litígio tributário"*.
-    3. **Fusão RRF (Reciprocal Rank Fusion)**: Combina rankings de métodos distintos sem distorção de escala de distâncias vetoriais.
-    4. **Re-ranker Contábil**: Avalia a densidade de anos fiscais e entidades numéricas presentes na pergunta.
-    5. **Saída Estruturada com Citações**: Respostas validadas por schemas Pydantic exigindo página e citação literal exata.
+    ### 1. Ruptura de Invariantes Tabulares & Semântica Relacional
+    Em demonstrações contábeis e relatórios regulatórios (DFP, ITR, 10-K), o particionamento convencional de documentos 
+    por janelas unidimensionais de caracteres (`RecursiveCharacterTextSplitter`) destrói a topologia bidimensional das tabelas 
+    (Balanço Patrimonial, DRE). Uma célula contábil $(i, j)$ depende simultaneamente do rótulo da linha (conta contábil), 
+    da coluna (exercício social) e da ordem de grandeza. A segmentação ingênua fragmenta essa matriz contábil, 
+    provocando alucinações aritméticas severas em modelos de linguagem geradores.
+
+    ### 2. Divergência de Espaço Latente (Semantic Drift em Entidades Contábeis)
+    Modelos densos de embedding mapeiam textos em um espaço vetorial contínuo $\mathbb{R}^d$ otimizado para similaridade 
+    semântica geral. No domínio contábil-regulatório, governado por normas rígidas (CPC/NBC, IFRS, US-GAAP), 
+    entidades de alta especificidade (ex: *"CPC 25"*, *"Nota Explicativa 14"*, valores nominais) sofrem de *semantic drift*: 
+    trechos conceituais genéricos recebem escores angulares similares ou superiores à nota técnica que contém o embasamento quantitativo.
+
+    ---
+
+    ### 3. Fundamentação da Arquitetura Adotada neste Projeto:
+    1. **Preservação Isomórfica de Tabelas (`pdfplumber`)**: Mapeamento determinístico de layout para Markdown Tables, mantendo a integridade relacional $\{(r_i, c_j, v_{ij})\}$.
+    2. **Espaço Dual de Recuperação via Reciprocal Rank Fusion (RRF)**:
+       - **Espaço Léxico Esparso $\mathbb{R}^{|V|}$ (BM25 Okapi)**: Otimizado para entidades de baixa entropia informacional (siglas, números de notas, anos fiscais).
+       - **Espaço Vetorial Denso $\mathbb{R}^d$ (ChromaDB / Embeddings)**: Otimizado para discussões conceituais e fatores qualitativos de risco.
+       - Fusão harmônica de rankings:
+         $$RRF(d) = \\sum_{m \\in M} \\frac{1}{k + r_m(d)}, \\quad k=60$$
+    3. **Re-ranker Heurístico Ponderado**: Ponderação de entidades numéricas, anos fiscais e priorização estruturada de tabelas.
+    4. **Contratos Tipados de Síntese (Pydantic AST)**: Citações auditáveis obrigatórias (documento, página, seção e trecho *verbatim*).
+    5. **Avaliação Quantitativa MLOps com RAGAS**: Medição formal de *Faithfulness* (mitigação matemática de alucinação), *Answer Relevance* e *Context Precision*.
     """)
